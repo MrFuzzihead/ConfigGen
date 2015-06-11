@@ -55,6 +55,7 @@ public class Field {
 	/**
 	 * Generate field access
 	 */
+	@SuppressWarnings("RedundantCast")
 	public void generate(MethodSpec.Builder spec) {
 		if (type == null) return;
 
@@ -83,8 +84,18 @@ public class Field {
 
 		Range range = field.getAnnotation(Range.class);
 		if (range != null) {
-			spec.addStatement("$N.setMinValue($L)", PROPERTY_NAME, range.min());
-			spec.addStatement("$N.setMaxValue($L)", PROPERTY_NAME, range.max());
+			if (type.getType() == TypeHelpers.Type.INT) {
+				// We need the casts here to ensure that they are integers
+				spec.addStatement("$N.setMinValue($L)", PROPERTY_NAME, (int) range.min());
+				spec.addStatement("$N.setMaxValue($L)", PROPERTY_NAME, (int) range.max());
+			} else {
+				spec.addStatement("$N.setMinValue($L)", PROPERTY_NAME, range.min());
+				spec.addStatement("$N.setMaxValue($L)", PROPERTY_NAME, range.max());
+			}
+		}
+
+		if (category.root.languagePrefix != null) {
+			spec.addStatement("$N.setLanguageKey($S)", PROPERTY_NAME, category.root.languagePrefix + category.name + "." + name);
 		}
 
 		spec.addStatement("$T.$N = $N.$N()", category.type, name, PROPERTY_NAME, "get" + type.accessName());

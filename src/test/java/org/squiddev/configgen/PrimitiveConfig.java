@@ -1,6 +1,6 @@
 package org.squiddev.configgen;
 
-@Config
+@Config(languagePrefix = "testing:")
 public class PrimitiveConfig {
 	public final static class Basic {
 		public static int foo;
@@ -36,6 +36,9 @@ public class PrimitiveConfig {
 
 		@Range(min = 0, max = 10)
 		public static int range;
+
+		@Range(min = 0, max = 10)
+		public static double doubleRange;
 
 		@Exclude
 		public static double ignore;

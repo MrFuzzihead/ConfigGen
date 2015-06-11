@@ -16,6 +16,7 @@ public class Category {
 	public final TypeElement type;
 
 	public final String name;
+	public final ConfigClass root;
 	protected final String description;
 
 	protected final Category parent;
@@ -23,9 +24,10 @@ public class Category {
 	protected List<Category> children = new ArrayList<Category>();
 	protected List<Field> fields = new ArrayList<Field>();
 
-	public Category(TypeElement type, Category parent, ProcessingEnvironment env) {
+	public Category(TypeElement type, Category parent, ConfigClass root, ProcessingEnvironment env) {
 		this.type = type;
 		this.parent = parent;
+		this.root = root;
 
 		name = (parent == null ? "" : parent.name + ".") + type.getSimpleName().toString();
 		description = env.getElementUtils().getDocComment(type);
@@ -41,7 +43,7 @@ public class Category {
 				case CLASS:
 					if (element.getAnnotation(Exclude.class) == null) {
 						Utils.checkUsable(element, env);
-						children.add(new Category((TypeElement) element, this, env));
+						children.add(new Category((TypeElement) element, this, root, env));
 					}
 					break;
 				default:
@@ -60,6 +62,10 @@ public class Category {
 
 		if (description != null) {
 			spec.addStatement("$N.setCategoryComment($S, $S)", ConfigClass.CONFIG_NAME, name, description.trim());
+		}
+
+		if (root.languagePrefix != null) {
+			spec.addStatement("$N.setCategoryLanguageKey($S, $S)", ConfigClass.CONFIG_NAME, name, root.languagePrefix + name);
 		}
 
 		RequiresRestart restart = type.getAnnotation(RequiresRestart.class);

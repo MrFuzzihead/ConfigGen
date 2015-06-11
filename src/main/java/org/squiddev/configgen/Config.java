@@ -12,4 +12,10 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.SOURCE)
 @Target(ElementType.TYPE)
 public @interface Config {
+	/**
+	 * The prefix to use for language keys
+	 *
+	 * If left blank, language keys will not be set
+	 */
+	String languagePrefix() default "";
 }

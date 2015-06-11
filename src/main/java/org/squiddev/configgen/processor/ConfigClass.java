@@ -6,6 +6,7 @@ import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeSpec;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.common.config.Property;
+import org.squiddev.configgen.Config;
 import org.squiddev.configgen.OnSync;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -29,17 +30,22 @@ public class ConfigClass {
 
 	protected final TypeElement type;
 
+	public final String languagePrefix;
+
 	protected final List<Category> categories = new ArrayList<Category>();
 	protected ExecutableElement sync;
 
 	public ConfigClass(TypeElement type, ProcessingEnvironment env) {
 		this.type = type;
 
+		Config config = type.getAnnotation(Config.class);
+		languagePrefix = config.languagePrefix() == null || config.languagePrefix().isEmpty() ? null : config.languagePrefix();
+
 		for (Element element : type.getEnclosedElements()) {
 			switch (element.getKind()) {
 				case CLASS:
 					Utils.checkUsable(element, env);
-					categories.add(new Category((TypeElement) element, null, env));
+					categories.add(new Category((TypeElement) element, null, this, env));
 					break;
 				case METHOD:
 					if (element.getAnnotation(OnSync.class) != null) {

@@ -3,7 +3,7 @@ Simple configs for Forge.
 
 The most simple config class looks like this:
 ```java
-@Config
+@Config(languagePrefix = "gui.config.primitive:")
 public class PrimitiveConfig {
 	/**
 	 * Javadoc is used to represent documentation
@@ -66,21 +66,20 @@ repositories {
 }
 
 dependencies {
-	compile 'org.squiddev:ConfigGen:1.+'
+	compile 'org.squiddev:ConfigGen:1.0-SNAPSHOT'
 }
 ```
 
 Then annotate your classes with `@Config`. To load and sync simply do:
 
 ```java
-PrimitiveConfig.init(new File("config.cfg"));
+PrimitiveConfigLoader.init(new File("config.cfg"));
 
 // Change things
-PrimitiveConfig.sync()
+PrimitiveConfigLoader.sync()
 ```
 
 ## Problems
  - The use of `@DefaultWhatever(...)` is obviously inconvenient. I'm looking at a way of using `com.sun.tools` to get the default
    value, but until then the default annotations will have to stay.
  - Class generation does mean you will get errors in the IDE when writing your code. Sorry.
-
