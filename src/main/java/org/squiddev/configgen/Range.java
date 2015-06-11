@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.SOURCE)
 @Target(ElementType.FIELD)
 public @interface Range {
-	int min() default 0;
+	double min() default Integer.MIN_VALUE;
 
-	int max() default Integer.MAX_VALUE;
+	double max() default Integer.MAX_VALUE;
 }

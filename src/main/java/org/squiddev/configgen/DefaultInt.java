@@ -6,11 +6,10 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Exclude a field from the config
- *
- * Final fields are automatically excluded
+ * Mark the default value on a int field
  */
 @Retention(RetentionPolicy.SOURCE)
 @Target(ElementType.FIELD)
-public @interface Exclude {
+public @interface DefaultInt {
+	int[] value();
 }

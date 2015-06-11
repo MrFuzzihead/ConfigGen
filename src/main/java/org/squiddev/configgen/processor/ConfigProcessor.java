@@ -1,6 +1,6 @@
-package org.squiddev.configgen;
+package org.squiddev.configgen.processor;
 
-import org.squiddev.configgen.data.ConfigClass;
+import org.squiddev.configgen.Config;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.RoundEnvironment;

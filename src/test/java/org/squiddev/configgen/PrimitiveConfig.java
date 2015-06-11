@@ -5,31 +5,38 @@ public class PrimitiveConfig {
 	/**
 	 * All the things
 	 */
-	public static class Section {
+	public final static class Section {
 		/**
 		 * Whatever
 		 */
 		@Range(min = 0, max = 10)
-		public static int thing = 3;
+		@DefaultInt(3)
+		public static int thing;
 
-		public static String bar;
+		@Range(min = 0, max = 10)
+		@DefaultInt({3, 2, 3})
+		public static int[] things;
 
 		/**
 		 * Documentation
 		 */
+		@RequiresRestart
 		public static class SubThing {
+			@DefaultString("testing")
+			public static String bar;
 
-		}
+			@DefaultString({"1", "2", "3"})
+			@RequiresRestart
+			public static String[] bars;
 
-		static {
-			bar = "HELLO";
-		}
+			@Exclude
+			public static double ignore;
 
-		public Section() {
-			System.out.println("Things");
+			public static final double IGNORE = 0;
 		}
 	}
 
 	public static void sync() {
+		System.out.println("Syncing ...");
 	}
 }

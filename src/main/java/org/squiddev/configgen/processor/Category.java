@@ -1,13 +1,14 @@
-package org.squiddev.configgen.data;
+package org.squiddev.configgen.processor;
 
 import com.squareup.javapoet.MethodSpec;
 import org.squiddev.configgen.Exclude;
+import org.squiddev.configgen.RequiresRestart;
 
 import javax.annotation.processing.ProcessingEnvironment;
-import javax.lang.model.element.*;
-import javax.tools.Diagnostic;
-import java.io.PrintWriter;
-import java.io.StringWriter;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,21 +42,35 @@ public class Category {
 					Utils.checkUsable(element, env);
 					children.add(new Category((TypeElement) element, this, env));
 					break;
+				default:
+					break;
 			}
 		}
 	}
 
-	public void generate(MethodSpec.Builder spec, ProcessingEnvironment env) {
+	public void generate(MethodSpec.Builder spec) {
 		for (Category child : children) {
-			child.generate(spec, env);
+			child.generate(spec);
 		}
 		for (Field field : fields) {
-			field.generate(spec, env);
+			field.generate(spec);
 		}
 
 		if (description != null) {
 			spec.addStatement("$N.setCategoryComment($S, $S)", ConfigClass.CONFIG_NAME, name, description.trim());
 		}
+
+		RequiresRestart restart = type.getAnnotation(RequiresRestart.class);
+		if (restart != null) {
+			if (restart.world()) {
+				spec.addStatement("$N.setCategoryRequiresWorldRestart($S, $L)", ConfigClass.CONFIG_NAME, name, true);
+			}
+			if (restart.mc()) {
+				spec.addStatement("$N.setCategoryRequiresMcRestart($S, $L)", ConfigClass.CONFIG_NAME, name, true);
+			}
+		}
+
+
 	}
 }
 
