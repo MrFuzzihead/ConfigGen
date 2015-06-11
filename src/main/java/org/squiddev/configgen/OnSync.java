@@ -6,11 +6,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Exclude a field from the config
- *
- * Final fields are automatically excluded
+ * The method to call on sync
  */
 @Retention(RetentionPolicy.SOURCE)
-@Target({ElementType.FIELD, ElementType.TYPE})
-public @interface Exclude {
+@Target({ElementType.METHOD})
+public @interface OnSync {
 }

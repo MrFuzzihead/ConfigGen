@@ -6,11 +6,14 @@ import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeSpec;
 import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.common.config.Property;
+import org.squiddev.configgen.OnSync;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.tools.Diagnostic;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -27,7 +30,7 @@ public class ConfigClass {
 	protected final TypeElement type;
 
 	protected final List<Category> categories = new ArrayList<Category>();
-	protected boolean hasSync = false;
+	protected ExecutableElement sync;
 
 	public ConfigClass(TypeElement type, ProcessingEnvironment env) {
 		this.type = type;
@@ -39,9 +42,12 @@ public class ConfigClass {
 					categories.add(new Category((TypeElement) element, null, env));
 					break;
 				case METHOD:
-					if (element.getSimpleName().toString().equals("sync")) {
+					if (element.getAnnotation(OnSync.class) != null) {
 						Utils.checkUsable(element, env);
-						hasSync = true;
+						if (sync != null) {
+							env.getMessager().printMessage(Diagnostic.Kind.ERROR, "Cannot have multiple @OnSync instances", element);
+						}
+						sync = (ExecutableElement) element;
 					}
 				default:
 					break;
@@ -64,7 +70,9 @@ public class ConfigClass {
 			category.generate(sync);
 		}
 
-		if (hasSync) sync.addStatement("$T.sync()", type);
+		if (this.sync != null) sync.addStatement("$T.$N()", type, this.sync.getSimpleName());
+		sync.addStatement("$N.save()", CONFIG_NAME);
+
 
 		MethodSpec init = MethodSpec.methodBuilder("init")
 			.addModifiers(Modifier.PUBLIC, Modifier.STATIC)

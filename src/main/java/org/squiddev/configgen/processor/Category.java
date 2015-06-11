@@ -39,8 +39,10 @@ public class Category {
 					}
 					break;
 				case CLASS:
-					Utils.checkUsable(element, env);
-					children.add(new Category((TypeElement) element, this, env));
+					if (element.getAnnotation(Exclude.class) == null) {
+						Utils.checkUsable(element, env);
+						children.add(new Category((TypeElement) element, this, env));
+					}
 					break;
 				default:
 					break;

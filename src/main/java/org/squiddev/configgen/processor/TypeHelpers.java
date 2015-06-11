@@ -10,27 +10,12 @@ import java.lang.reflect.Array;
  */
 public final class TypeHelpers {
 	public enum Type {
-		ARRAY(new Object[0]),
-		BOOLEAN(false),
-		DOUBLE(0),
-		INT(0),
-		STRING(""),
-		UNKNOWN(null);
-
-		private final Object def;
-
-		Type(Object def) {
-			this.def = def;
-		}
-
-		/**
-		 * Get the default value
-		 *
-		 * @return The default value for this class
-		 */
-		public Object getDefault() {
-			return def;
-		}
+		ARRAY,
+		BOOLEAN,
+		DOUBLE,
+		INT,
+		STRING,
+		UNKNOWN;
 	}
 
 	public interface IType {
@@ -60,6 +45,13 @@ public final class TypeHelpers {
 		 * @return The appropriate class
 		 */
 		Class<?> getTypeClass();
+
+		/**
+		 * Get the default value
+		 *
+		 * @return The default value for this class
+		 */
+		Object getDefault();
 	}
 
 	public final static class ArrayType implements IType {
@@ -93,6 +85,11 @@ public final class TypeHelpers {
 		@Override
 		public Class<?> getTypeClass() {
 			return Array.newInstance(component.getTypeClass(), 0).getClass();
+		}
+
+		@Override
+		public Object getDefault() {
+			return Array.newInstance(component.getTypeClass(), 0);
 		}
 
 		public IType getComponentType() {
@@ -151,41 +148,24 @@ public final class TypeHelpers {
 		}
 
 		@Override
+		public Object getDefault() {
+			switch (type) {
+				case BOOLEAN:
+					return false;
+				case INT:
+					return 0;
+				case DOUBLE:
+					return 0.0;
+				case STRING:
+					return "";
+				default:
+					return null;
+			}
+		}
+
+		@Override
 		public String toString() {
 			return type.toString().toLowerCase();
-		}
-	}
-
-	private final static class UnknownType implements IType {
-		private final Class<?> klass;
-
-		public UnknownType(Class<?> klass) {
-			this.klass = klass;
-		}
-
-		@Override
-		public Type getType() {
-			return Type.UNKNOWN;
-		}
-
-		@Override
-		public String accessName() {
-			return null;
-		}
-
-		@Override
-		public Object extractValue(Object value, Object def) {
-			return null;
-		}
-
-		@Override
-		public Class<?> getTypeClass() {
-			return null;
-		}
-
-		@Override
-		public String toString() {
-			return klass.toString();
 		}
 	}
 

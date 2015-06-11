@@ -34,7 +34,7 @@ public class Field {
 		TypeHelpers.IType type = TypeHelpers.getType(field.asType());
 		String validate = TypeHelpers.validateType(type);
 		if (validate == null) {
-			defaultValue = type.extractValue(calculateDefault(), type.getType().getDefault());
+			defaultValue = type.extractValue(calculateDefault(type.getDefault()), type.getDefault());
 			if (!TypeHelpers.instanceOf(type.getTypeClass(), defaultValue)) {
 				env.getMessager().printMessage(
 					Diagnostic.Kind.ERROR,
@@ -90,7 +90,7 @@ public class Field {
 		spec.addStatement("$T.$N = $N.$N()", category.type, name, PROPERTY_NAME, "get" + type.accessName());
 	}
 
-	protected Object calculateDefault() {
+	protected Object calculateDefault(Object def) {
 		DefaultBoolean dBoolean = field.getAnnotation(DefaultBoolean.class);
 		if (dBoolean != null) return dBoolean.value();
 
@@ -103,7 +103,7 @@ public class Field {
 		DefaultString dString = field.getAnnotation(DefaultString.class);
 		if (dString != null) return dString.value();
 
-		return type.getType().getDefault();
+		return def;
 	}
 }
 
