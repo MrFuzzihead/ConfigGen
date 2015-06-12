@@ -9,6 +9,9 @@ import java.util.Set;
 public class Utils {
 	/**
 	 * Assert an element is public, static
+	 *
+	 * @param element The element to check
+	 * @param env     The environment to produce errors in
 	 */
 	public static void checkUsable(Element element, ProcessingEnvironment env) {
 		Set<Modifier> modifiers = element.getModifiers();

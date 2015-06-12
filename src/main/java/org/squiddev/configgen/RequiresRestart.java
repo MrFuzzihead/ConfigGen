@@ -13,11 +13,15 @@ import java.lang.annotation.Target;
 public @interface RequiresRestart {
 	/**
 	 * Requires a restart of the world
+	 *
+	 * @return If a reload of the world is required
 	 */
 	boolean world() default true;
 
 	/**
 	 * Requires a restart of game
+	 *
+	 * @return If a restart is required
 	 */
 	boolean mc() default true;
 }

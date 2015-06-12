@@ -36,11 +36,15 @@ public final class TypeHelpers {
 	public interface IType {
 		/**
 		 * Get the {@link Type} for this type
+		 *
+		 * @return The simple type
 		 */
 		Type getType();
 
 		/**
 		 * Get the name used to read it from a {@link net.minecraftforge.common.config.Configuration}
+		 *
+		 * @return The function name used to read
 		 */
 		String accessName();
 
@@ -50,6 +54,7 @@ public final class TypeHelpers {
 		 * Does not perform type checking.
 		 *
 		 * @param value The value to extract from
+		 * @param def   The default value
 		 * @return The extracted value or the default
 		 */
 		Object extractValue(Object value, Object def);
@@ -153,39 +158,6 @@ public final class TypeHelpers {
 		@Override
 		public String toString() {
 			return type.toString().toLowerCase();
-		}
-	}
-
-	private final static class UnknownType implements IType {
-		private final Class<?> klass;
-
-		public UnknownType(Class<?> klass) {
-			this.klass = klass;
-		}
-
-		@Override
-		public Type getType() {
-			return Type.UNKNOWN;
-		}
-
-		@Override
-		public String accessName() {
-			return null;
-		}
-
-		@Override
-		public Object extractValue(Object value, Object def) {
-			return null;
-		}
-
-		@Override
-		public Class<?> getTypeClass() {
-			return null;
-		}
-
-		@Override
-		public String toString() {
-			return klass.toString();
 		}
 	}
 

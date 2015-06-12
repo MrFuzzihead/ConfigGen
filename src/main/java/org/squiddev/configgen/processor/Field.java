@@ -54,6 +54,8 @@ public class Field {
 
 	/**
 	 * Generate field access
+	 *
+	 * @param spec The writer to write to
 	 */
 	public void generate(MethodSpec.Builder spec) {
 		if (type == null) return;
@@ -103,7 +105,7 @@ public class Field {
 		DefaultString dString = field.getAnnotation(DefaultString.class);
 		if (dString != null) return dString.value();
 
-		return type.getType().getDefault();
+		return null;
 	}
 }
 
