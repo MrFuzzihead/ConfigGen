@@ -9,18 +9,19 @@ import javax.tools.Diagnostic;
 import java.lang.reflect.Array;
 
 import static org.squiddev.configgen.processor.ConfigClass.CONFIG_NAME;
-import static org.squiddev.configgen.processor.ConfigClass.PROPERTY_NAME;
 
 public class Field {
 	protected final VariableElement field;
 
-	protected final String name;
-	protected final String description;
+	protected String name;
+	protected String description;
 
-	protected final Object defaultValue;
-	protected final TypeHelpers.IType type;
+	protected Object defaultValue;
+	protected TypeHelpers.IType type;
+	protected boolean requiresMcRestart = false;
+	protected boolean requiresWorldRestart = false;
 
-	protected final Category category;
+	protected Category category;
 
 	public Field(VariableElement field, Category category, ProcessingEnvironment env) {
 		this.field = field;
@@ -50,6 +51,12 @@ public class Field {
 			defaultValue = null;
 			this.type = null;
 		}
+
+		RequiresRestart restart = field.getAnnotation(RequiresRestart.class);
+		if (restart != null) {
+			requiresMcRestart = restart.mc();
+			requiresWorldRestart = restart.world();
+		}
 	}
 
 	/**
@@ -59,7 +66,8 @@ public class Field {
 	public void generate(MethodSpec.Builder spec) {
 		if (type == null) return;
 
-		spec.addCode("$[$N = $N.get($S, $S, ", PROPERTY_NAME, CONFIG_NAME, category.name, name);
+		spec.addCode("$[");
+		spec.addCode("$T.$N = $N.get($S, $S, ", category.type, name, CONFIG_NAME, category.name, name);
 
 		if (type.getTypeClass().isArray()) {
 			// A horrible method to get the default
@@ -74,31 +82,29 @@ public class Field {
 		} else {
 			spec.addCode(type.getType() == TypeHelpers.Type.STRING ? "$S" : "$L", defaultValue);
 		}
-		spec.addCode(", $S);\n$]", description);
+		spec.addCode(", $S)\n", description);
 
-		RequiresRestart restart = field.getAnnotation(RequiresRestart.class);
-		if (restart != null) {
-			if (restart.world()) spec.addStatement("$N.setRequiresWorldRestart($L)", PROPERTY_NAME, true);
-			if (restart.mc()) spec.addStatement("$N.setRequiresMcRestart($L)", PROPERTY_NAME, true);
-		}
+		if (requiresWorldRestart) spec.addCode(".setRequiresWorldRestart($L)\n", true);
+		if (requiresMcRestart) spec.addCode(".setRequiresMcRestart($L)\n", true);
 
 		Range range = field.getAnnotation(Range.class);
 		if (range != null) {
 			if (type.getType() == TypeHelpers.Type.INT) {
 				// We need the casts here to ensure that they are integers
-				spec.addStatement("$N.setMinValue($L)", PROPERTY_NAME, (int) range.min());
-				spec.addStatement("$N.setMaxValue($L)", PROPERTY_NAME, (int) range.max());
+				spec.addCode(".setMinValue($L)\n", (int) range.min());
+				spec.addCode(".setMaxValue($L)\n", (int) range.max());
 			} else {
-				spec.addStatement("$N.setMinValue($L)", PROPERTY_NAME, range.min());
-				spec.addStatement("$N.setMaxValue($L)", PROPERTY_NAME, range.max());
+				spec.addCode(".setMinValue($L)", range.min());
+				spec.addCode(".setMaxValue($L)\n", range.max());
 			}
 		}
 
 		if (category.root.languagePrefix != null) {
-			spec.addStatement("$N.setLanguageKey($S)", PROPERTY_NAME, category.root.languagePrefix + category.name + "." + name);
+			spec.addCode(".setLanguageKey($S)\n", category.root.languagePrefix + category.name + "." + name);
 		}
 
-		spec.addStatement("$T.$N = $N.$N()", category.type, name, PROPERTY_NAME, "get" + type.accessName());
+		spec.addCode(".$N()", "get" + type.accessName());
+		spec.addCode(";\n$]");
 	}
 
 	protected Object calculateDefault(Object def) {

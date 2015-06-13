@@ -5,7 +5,6 @@ import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeSpec;
 import net.minecraftforge.common.config.Configuration;
-import net.minecraftforge.common.config.Property;
 import org.squiddev.configgen.Config;
 import org.squiddev.configgen.OnSync;
 
@@ -26,7 +25,6 @@ import java.util.List;
 public class ConfigClass {
 	public static final String CONFIG_FIELD = "configuration";
 	public static final String CONFIG_NAME = "config";
-	public static final String PROPERTY_NAME = "property";
 
 	protected final TypeElement type;
 
@@ -69,8 +67,7 @@ public class ConfigClass {
 		MethodSpec.Builder sync = MethodSpec.methodBuilder("sync")
 			.addModifiers(Modifier.PUBLIC, Modifier.STATIC)
 			.returns(void.class)
-			.addStatement("$T $N = $N", Configuration.class, CONFIG_NAME, CONFIG_FIELD)
-			.addStatement("$T $N", Property.class, PROPERTY_NAME);
+			.addStatement("$T $N = $N", Configuration.class, CONFIG_NAME, CONFIG_FIELD);
 
 		for (Category category : categories) {
 			category.generate(sync);
