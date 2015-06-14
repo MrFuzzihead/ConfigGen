@@ -31,7 +31,7 @@ public class Category {
 		this.parent = parent;
 		this.root = root;
 
-		name = (parent == null ? "" : parent.name + ".") + type.getSimpleName().toString();
+		name = ((parent == null ? "" : parent.name + ".") + type.getSimpleName().toString()).toLowerCase();
 		description = env.getElementUtils().getDocComment(type);
 
 		for (Element element : type.getEnclosedElements()) {
