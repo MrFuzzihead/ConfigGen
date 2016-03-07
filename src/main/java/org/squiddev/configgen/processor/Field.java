@@ -5,21 +5,26 @@ import org.squiddev.configgen.*;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
 import java.lang.reflect.Array;
 
-import static org.squiddev.configgen.processor.ConfigClass.*;
+import static org.squiddev.configgen.processor.ConfigClass.CONFIG_NAME;
+import static org.squiddev.configgen.processor.ConfigClass.LOOP_NAME;
 
 public class Field {
 	protected final VariableElement field;
 
-	protected final String name;
-	protected final String description;
+	protected String name;
+	protected String description;
 
-	protected final Object defaultValue;
-	protected final TypeHelpers.IType type;
+	protected Object defaultValue;
+	protected TypeHelpers.IType type;
+	protected TypeMirror baseType;
+	protected boolean requiresMcRestart = false;
+	protected boolean requiresWorldRestart = false;
 
-	protected final Category category;
+	protected Category category;
 
 	public Field(VariableElement field, Category category, ProcessingEnvironment env) {
 		this.field = field;
@@ -32,7 +37,7 @@ public class Field {
 		TypeHelpers.IType type = TypeHelpers.getType(field.asType(), env.getTypeUtils());
 		String validate = TypeHelpers.validateType(type);
 		if (validate == null) {
-			defaultValue = type.extractValue(calculateDefault(), type.getType().getDefault());
+			defaultValue = type.extractValue(calculateDefault(type.getDefault()), type.getDefault());
 			if (!TypeHelpers.isType(defaultValue.getClass(), type)) {
 				env.getMessager().printMessage(
 						Diagnostic.Kind.ERROR,
@@ -42,11 +47,18 @@ public class Field {
 			}
 
 			this.type = type;
+			baseType = type.getType() == TypeHelpers.Type.GENERIC_ARRAY ? env.getTypeUtils().getArrayType(type.getComponentType().getMirror()) : type.getMirror();
 		} else {
 			env.getMessager().printMessage(Diagnostic.Kind.ERROR, validate, field);
 
 			defaultValue = null;
 			this.type = null;
+		}
+
+		RequiresRestart restart = field.getAnnotation(RequiresRestart.class);
+		if (restart != null) {
+			requiresMcRestart = restart.mc();
+			requiresWorldRestart = restart.world();
 		}
 	}
 
@@ -55,12 +67,26 @@ public class Field {
 	 *
 	 * @param spec The writer to write to
 	 */
+	@SuppressWarnings("RedundantCast")
 	public void generate(MethodSpec.Builder spec) {
 		if (type == null) return;
 
-		spec.addCode("$[$N = $N.get($S, $S, ", PROPERTY_NAME, CONFIG_NAME, category.name, name);
+		spec.addCode("$[");
+		String propName = null;
+		if (type.getType() == TypeHelpers.Type.GENERIC_ARRAY) {
+			if (type.throughConstructor()) {
+				spec.addCode("$T.$N = new $T(", category.type, name, type.getMirror());
+			} else {
+				propName = category.type.getQualifiedName().toString().replace('.', '_') + "_" + name;
+				spec.addCode("$T $N = ", baseType, propName);
+			}
+		} else {
+			spec.addCode("$T.$N = ", category.type, name);
+		}
 
-		if (type.getType() == TypeHelpers.Type.ARRAY || type.getType() == TypeHelpers.Type.GENERIC_ARRAY) {
+		spec.addCode("$N.get($S, $S, ", CONFIG_NAME, category.name, name);
+
+		if (type.getType().isArray()) {
 			// A horrible method to get the default
 			String format = (type.getComponentType().getType() == TypeHelpers.Type.STRING ? "$S" : "$L") + ", ";
 
@@ -73,34 +99,40 @@ public class Field {
 		} else {
 			spec.addCode(type.getType() == TypeHelpers.Type.STRING ? "$S" : "$L", defaultValue);
 		}
-		spec.addCode(", $S);\n$]", description);
+		spec.addCode(", $S)\n", description);
 
-		RequiresRestart restart = field.getAnnotation(RequiresRestart.class);
-		if (restart != null) {
-			if (restart.world()) spec.addStatement("$N.setRequiresWorldRestart($L)", PROPERTY_NAME, true);
-			if (restart.mc()) spec.addStatement("$N.setRequiresMcRestart($L)", PROPERTY_NAME, true);
-		}
+		if (requiresWorldRestart) spec.addCode(".setRequiresWorldRestart($L)\n", true);
+		if (requiresMcRestart) spec.addCode(".setRequiresMcRestart($L)\n", true);
 
 		Range range = field.getAnnotation(Range.class);
 		if (range != null) {
-			spec.addStatement("$N.setMinValue($L)", PROPERTY_NAME, range.min());
-			spec.addStatement("$N.setMaxValue($L)", PROPERTY_NAME, range.max());
+			if (type.getType() == TypeHelpers.Type.INT) {
+				// We need the casts here to ensure that they are integers
+				spec.addCode(".setMinValue($L)\n", (int) range.min());
+				spec.addCode(".setMaxValue($L)\n", (int) range.max());
+			} else {
+				spec.addCode(".setMinValue($L)", range.min());
+				spec.addCode(".setMaxValue($L)\n", range.max());
+			}
 		}
 
-		if (type.getType() == TypeHelpers.Type.GENERIC_ARRAY) {
-			if (type.throughConstructor()) {
-				spec.addStatement("$T.$N = new $T($N.$N())", category.type, name, type.getMirror(), PROPERTY_NAME, "get" + type.accessName());
-			} else {
-				spec.beginControlFlow("for($T $N : $N.$N())", type.getComponentType().getMirror(), LOOP_NAME, PROPERTY_NAME, "get" + type.accessName());
-				spec.addStatement("$T.$N.add($N)", category.type, name, LOOP_NAME);
-				spec.endControlFlow();
-			}
-		} else {
-			spec.addStatement("$T.$N = $N.$N()", category.type, name, PROPERTY_NAME, "get" + type.accessName());
+		if (category.root.languagePrefix != null) {
+			spec.addCode(".setLanguageKey($S)\n", category.root.languagePrefix + category.name + "." + name);
+		}
+
+		spec.addCode(".$N()", "get" + type.accessName());
+		if (type.getType() == TypeHelpers.Type.GENERIC_ARRAY && type.throughConstructor()) spec.addCode(")");
+		spec.addCode(";\n$]");
+
+		if (propName != null) {
+			spec.addStatement("$T.$N = new $T()", category.type, name, type.getMirror());
+			spec.beginControlFlow("for($T $N : $N)", type.getComponentType().getMirror(), LOOP_NAME, propName);
+			spec.addStatement("$T.$N.add($N)", category.type, name, LOOP_NAME);
+			spec.endControlFlow();
 		}
 	}
 
-	protected Object calculateDefault() {
+	protected Object calculateDefault(Object def) {
 		DefaultBoolean dBoolean = field.getAnnotation(DefaultBoolean.class);
 		if (dBoolean != null) return dBoolean.value();
 
@@ -113,7 +145,7 @@ public class Field {
 		DefaultString dString = field.getAnnotation(DefaultString.class);
 		if (dString != null) return dString.value();
 
-		return null;
+		return def;
 	}
 }
 

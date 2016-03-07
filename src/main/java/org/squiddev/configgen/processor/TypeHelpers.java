@@ -14,27 +14,16 @@ import java.util.List;
  */
 public final class TypeHelpers {
 	public enum Type {
-		ARRAY(new Object[0]),
-		GENERIC_ARRAY(new Object[0]),
-		BOOLEAN(false),
-		DOUBLE(0),
-		INT(0),
-		STRING(""),
-		UNKNOWN(null);
+		ARRAY,
+		GENERIC_ARRAY,
+		BOOLEAN,
+		DOUBLE,
+		INT,
+		STRING,
+		UNKNOWN;
 
-		private final Object def;
-
-		Type(Object def) {
-			this.def = def;
-		}
-
-		/**
-		 * Get the default value
-		 *
-		 * @return The default value for this class
-		 */
-		public Object getDefault() {
-			return def;
+		public boolean isArray() {
+			return this == ARRAY || this == GENERIC_ARRAY;
 		}
 	}
 
@@ -84,6 +73,14 @@ public final class TypeHelpers {
 		 * @return If the type should be inialised through a constructor.
 		 */
 		boolean throughConstructor();
+
+
+		/**
+		 * Get the default value
+		 *
+		 * @return The default value for this class
+		 */
+		Object getDefault();
 	}
 
 	private static final class ArrayPropertyType implements IType {
@@ -119,6 +116,11 @@ public final class TypeHelpers {
 		@Override
 		public TypeMirror getMirror() {
 			return mirror;
+		}
+
+		@Override
+		public Object getDefault() {
+			return Array.newInstance(component.getDefault().getClass(), 0);
 		}
 
 		@Override
@@ -189,6 +191,22 @@ public final class TypeHelpers {
 		@Override
 		public String toString() {
 			return type.toString().toLowerCase();
+		}
+
+		@Override
+		public Object getDefault() {
+			switch (type) {
+				case BOOLEAN:
+					return false;
+				case INT:
+					return 0;
+				case DOUBLE:
+					return 0.0;
+				case STRING:
+					return "";
+				default:
+					return null;
+			}
 		}
 	}
 
@@ -269,6 +287,11 @@ public final class TypeHelpers {
 		}
 
 		@Override
+		public Object getDefault() {
+			return Array.newInstance(child.getDefault().getClass(), 0);
+		}
+
+		@Override
 		public String toString() {
 			return "GenericArray{" +
 					"mirror=" + mirror +
@@ -311,10 +334,10 @@ public final class TypeHelpers {
 	public static String validateType(IType type) {
 		if (type.getType() == Type.UNKNOWN) {
 			return "Unknown type " + type;
-		} else if (type.getType() == Type.ARRAY || type.getType() == Type.GENERIC_ARRAY) {
+		} else if (type.getType().isArray()) {
 			IType component = type.getComponentType();
 
-			if (component.getType() == Type.ARRAY || component.getType() == Type.GENERIC_ARRAY) {
+			if (component.getType().isArray()) {
 				return "Nested arrays are not allowed";
 			} else if (component.getType() == Type.UNKNOWN) {
 				return "Unknown type " + type;

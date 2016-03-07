@@ -16,18 +16,22 @@ public class Category {
 	public final TypeElement type;
 
 	public final String name;
-	protected final String description;
-
-	protected final Category parent;
+	public final ConfigClass root;
+	protected Category parent;
 
 	protected List<Category> children = new ArrayList<Category>();
 	protected List<Field> fields = new ArrayList<Field>();
 
-	public Category(TypeElement type, Category parent, ProcessingEnvironment env) {
+	protected String description;
+	protected boolean requiresMcRestart = false;
+	protected boolean requiresWorldRestart = false;
+
+	public Category(TypeElement type, Category parent, ConfigClass root, ProcessingEnvironment env) {
 		this.type = type;
 		this.parent = parent;
+		this.root = root;
 
-		name = (parent == null ? "" : parent.name + ".") + type.getSimpleName().toString();
+		name = ((parent == null ? "" : parent.name + ".") + type.getSimpleName().toString()).toLowerCase();
 		description = env.getElementUtils().getDocComment(type);
 
 		for (Element element : type.getEnclosedElements()) {
@@ -39,12 +43,20 @@ public class Category {
 					}
 					break;
 				case CLASS:
-					Utils.checkUsable(element, env);
-					children.add(new Category((TypeElement) element, this, env));
+					if (element.getAnnotation(Exclude.class) == null) {
+						Utils.checkUsable(element, env);
+						children.add(new Category((TypeElement) element, this, root, env));
+					}
 					break;
 				default:
 					break;
 			}
+		}
+
+		RequiresRestart restart = type.getAnnotation(RequiresRestart.class);
+		if (restart != null) {
+			requiresMcRestart = restart.mc();
+			requiresWorldRestart = restart.world();
 		}
 	}
 
@@ -56,21 +68,19 @@ public class Category {
 			field.generate(spec);
 		}
 
-		if (description != null) {
-			spec.addStatement("$N.setCategoryComment($S, $S)", ConfigClass.CONFIG_NAME, name, description.trim());
+		if (description != null || root.languagePrefix != null || requiresMcRestart || requiresWorldRestart) {
+			spec.addCode("$[");
+			spec.addCode("$N.getCategory($S)", ConfigClass.CONFIG_NAME, name);
+
+			if (root.languagePrefix != null) spec.addCode("\n.setLanguageKey($S)", root.languagePrefix + name);
+			if (requiresWorldRestart) spec.addCode("\n.setRequiresWorldRestart($L)", true);
+			if (requiresMcRestart) spec.addCode("\n.setRequiresMcRestart($L)", true);
+
+			// This doesn't return a ConfigCategory so has to be last
+			if (description != null) spec.addCode("\n.setComment($S)", description.trim());
+
+			spec.addCode(";\n$]");
 		}
-
-		RequiresRestart restart = type.getAnnotation(RequiresRestart.class);
-		if (restart != null) {
-			if (restart.world()) {
-				spec.addStatement("$N.setCategoryRequiresWorldRestart($S, $L)", ConfigClass.CONFIG_NAME, name, true);
-			}
-			if (restart.mc()) {
-				spec.addStatement("$N.setCategoryRequiresMcRestart($S, $L)", ConfigClass.CONFIG_NAME, name, true);
-			}
-		}
-
-
 	}
 }
 
