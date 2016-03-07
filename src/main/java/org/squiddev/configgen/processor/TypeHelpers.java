@@ -1,9 +1,13 @@
 package org.squiddev.configgen.processor;
 
-import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.*;
+import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.Types;
 import java.lang.reflect.Array;
+import java.util.List;
 
 /**
  * Helpers for type
@@ -11,6 +15,7 @@ import java.lang.reflect.Array;
 public final class TypeHelpers {
 	public enum Type {
 		ARRAY(new Object[0]),
+		GENERIC_ARRAY(new Object[0]),
 		BOOLEAN(false),
 		DOUBLE(0),
 		INT(0),
@@ -64,14 +69,30 @@ public final class TypeHelpers {
 		 *
 		 * @return The appropriate class
 		 */
-		Class<?> getTypeClass();
+		TypeMirror getMirror();
+
+		/**
+		 * Get the component type
+		 *
+		 * @return The component type
+		 */
+		IType getComponentType();
+
+		/**
+		 * Initialise the type through a constructor. Only applies to {@link Type#GENERIC_ARRAY}.
+		 *
+		 * @return If the type should be inialised through a constructor.
+		 */
+		boolean throughConstructor();
 	}
 
-	public final static class ArrayType implements IType {
+	private static final class ArrayPropertyType implements IType {
 		private final IType component;
+		private final TypeMirror mirror;
 
-		public ArrayType(IType component) {
-			this.component = component;
+		public ArrayPropertyType(ArrayType mirror, Types types) {
+			this.component = TypeHelpers.getType(mirror.getComponentType(), types);
+			this.mirror = mirror;
 		}
 
 		@Override
@@ -96,25 +117,36 @@ public final class TypeHelpers {
 		}
 
 		@Override
-		public Class<?> getTypeClass() {
-			return Array.newInstance(component.getTypeClass(), 0).getClass();
+		public TypeMirror getMirror() {
+			return mirror;
 		}
 
+		@Override
 		public IType getComponentType() {
 			return component;
 		}
 
 		@Override
+		public boolean throughConstructor() {
+			return false;
+		}
+
+		@Override
 		public String toString() {
-			return component.toString() + "[]";
+			return "ArrayPropertyType{" +
+					"component=" + component +
+					", mirror=" + mirror +
+					'}';
 		}
 	}
 
-	private final static class BasicType implements IType {
+	private static final class BasicType implements IType {
 		private final Type type;
+		private final TypeMirror mirror;
 
-		public BasicType(Type type) {
+		public BasicType(Type type, TypeMirror mirror) {
 			this.type = type;
+			this.mirror = mirror;
 		}
 
 		@Override
@@ -140,19 +172,18 @@ public final class TypeHelpers {
 		}
 
 		@Override
-		public Class<?> getTypeClass() {
-			switch (type) {
-				case BOOLEAN:
-					return boolean.class;
-				case INT:
-					return int.class;
-				case DOUBLE:
-					return double.class;
-				case STRING:
-					return String.class;
-				default:
-					return null;
-			}
+		public TypeMirror getMirror() {
+			return mirror;
+		}
+
+		@Override
+		public IType getComponentType() {
+			return this;
+		}
+
+		@Override
+		public boolean throughConstructor() {
+			return false;
 		}
 
 		@Override
@@ -161,32 +192,129 @@ public final class TypeHelpers {
 		}
 	}
 
-	public static IType getType(TypeMirror mirror) {
+	private static final class GenericArray implements IType {
+		private final TypeMirror mirror;
+		private final IType child;
+		private final boolean ctor;
+
+		private GenericArray(DeclaredType mirror, Types types) {
+			this.mirror = mirror;
+			switch (mirror.getTypeArguments().size()) {
+				case 0: {
+					ctor = true;
+					TypeElement element = (TypeElement) mirror.asElement();
+					IType child = new BasicType(Type.UNKNOWN, null);
+					for (Element childElement : element.getEnclosedElements()) {
+						if (childElement.getKind() == ElementKind.CONSTRUCTOR) {
+							ExecutableElement method = (ExecutableElement) childElement;
+							List<? extends VariableElement> elem = method.getParameters();
+
+							if (elem.size() == 1) {
+								TypeMirror paramMirror = elem.get(0).asType();
+								if (paramMirror.getKind() == TypeKind.ARRAY) {
+									child = TypeHelpers.getType(((ArrayType) paramMirror).getComponentType(), types);
+									break;
+								}
+							}
+						}
+					}
+
+					this.child = child;
+					break;
+				}
+				case 1:
+					ctor = false;
+					child = TypeHelpers.getType(mirror.getTypeArguments().get(0), types);
+					break;
+				default:
+					ctor = false;
+					child = new BasicType(Type.UNKNOWN, null);
+			}
+		}
+
+		@Override
+		public Type getType() {
+			return Type.GENERIC_ARRAY;
+		}
+
+		@Override
+		public String accessName() {
+			return child.accessName() + "List";
+		}
+
+		@Override
+		public Object extractValue(Object value, Object def) {
+			if (value == null) {
+				return def;
+			} else if (value.getClass().isArray()) {
+				return value;
+			} else {
+				return new Object[]{value};
+			}
+		}
+
+		@Override
+		public TypeMirror getMirror() {
+			return mirror;
+		}
+
+		@Override
+		public IType getComponentType() {
+			return child;
+		}
+
+		@Override
+		public boolean throughConstructor() {
+			return ctor;
+		}
+
+		@Override
+		public String toString() {
+			return "GenericArray{" +
+					"mirror=" + mirror +
+					", child=" + child +
+					'}';
+		}
+	}
+
+	public static IType getType(TypeMirror mirror, Types types) {
 		switch (mirror.getKind()) {
 			case BOOLEAN:
-				return new BasicType(Type.BOOLEAN);
+				return new BasicType(Type.BOOLEAN, mirror);
 			case DOUBLE:
-				return new BasicType(Type.DOUBLE);
+				return new BasicType(Type.DOUBLE, mirror);
 			case INT:
-				return new BasicType(Type.INT);
+				return new BasicType(Type.INT, mirror);
 			case ARRAY:
-				return new ArrayType(getType(((javax.lang.model.type.ArrayType) mirror).getComponentType()));
-			case DECLARED:
-				if (((TypeElement) ((DeclaredType) mirror).asElement()).getQualifiedName().toString().equals("java.lang.String")) {
-					return new BasicType(Type.STRING);
+				return new ArrayPropertyType((ArrayType) mirror, types);
+			case DECLARED: {
+				DeclaredType declared = (DeclaredType) mirror;
+				TypeElement element = (TypeElement) declared.asElement();
+				String name = element.getQualifiedName().toString();
+				if (name.equals("java.lang.String")) {
+					return new BasicType(Type.STRING, mirror);
+				} else if (name.equals("java.lang.Integer")) {
+					return new BasicType(Type.INT, types.getPrimitiveType(TypeKind.INT));
+				} else if (name.equals("java.lang.Boolean")) {
+					return new BasicType(Type.BOOLEAN, types.getPrimitiveType(TypeKind.BOOLEAN));
+				} else if (name.equals("java.lang.Double")) {
+					return new BasicType(Type.DOUBLE, types.getPrimitiveType(TypeKind.DOUBLE));
+				} else {
+					return new GenericArray(declared, types);
 				}
+			}
 			default:
-				return new BasicType(Type.UNKNOWN);
+				return new BasicType(Type.UNKNOWN, mirror);
 		}
 	}
 
 	public static String validateType(IType type) {
 		if (type.getType() == Type.UNKNOWN) {
 			return "Unknown type " + type;
-		} else if (type.getType() == Type.ARRAY) {
-			IType component = ((ArrayType) type).getComponentType();
+		} else if (type.getType() == Type.ARRAY || type.getType() == Type.GENERIC_ARRAY) {
+			IType component = type.getComponentType();
 
-			if (component.getType() == Type.ARRAY) {
+			if (component.getType() == Type.ARRAY || component.getType() == Type.GENERIC_ARRAY) {
 				return "Nested arrays are not allowed";
 			} else if (component.getType() == Type.UNKNOWN) {
 				return "Unknown type " + type;
@@ -196,17 +324,19 @@ public final class TypeHelpers {
 		return null;
 	}
 
-	public static boolean instanceOf(Class<?> a, Object b) {
-		if (a.isInstance(b)) return true;
-
-		if (a == Integer.class || a == int.class) {
-			return b.getClass() == Integer.class || b.getClass() == int.class;
-		} else if (a == Double.class || a == double.class) {
-			return b.getClass() == Double.class || b.getClass() == double.class;
-		} else if (a == Boolean.class || a == boolean.class) {
-			return b.getClass() == Boolean.class || b.getClass() == boolean.class;
+	public static boolean isType(Class<?> klass, IType type) {
+		if (klass == Integer.class || klass == int.class) {
+			return type.getType() == Type.INT;
+		} else if (klass == Double.class || klass == double.class) {
+			return type.getType() == Type.DOUBLE;
+		} else if (klass == Boolean.class || klass == boolean.class) {
+			return type.getType() == Type.BOOLEAN;
+		} else if (klass == String.class) {
+			return type.getType() == Type.STRING;
+		} else if (klass.isArray()) {
+			return (type.getType() == Type.ARRAY || type.getType() == Type.GENERIC_ARRAY) && isType(klass.getComponentType(), type.getComponentType());
+		} else {
+			throw new IllegalStateException("Unknown type " + klass);
 		}
-
-		return false;
 	}
 }

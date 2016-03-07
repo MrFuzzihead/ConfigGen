@@ -1,5 +1,7 @@
 package org.squiddev.configgen;
 
+import java.util.HashSet;
+
 @Config
 public class PrimitiveConfig {
 	/**
@@ -16,6 +18,14 @@ public class PrimitiveConfig {
 		@Range(min = 0, max = 10)
 		@DefaultInt({3, 2, 3})
 		public static int[] things;
+
+		@Range(min = 0, max = 10)
+		@DefaultInt({3, 2, 3})
+		public static HashSet<Integer> hashSet;
+
+		@Range(min = 0, max = 10)
+		@DefaultInt({3, 2, 3})
+		public static ThroughConstructor throughConstructor;
 
 		/**
 		 * Documentation

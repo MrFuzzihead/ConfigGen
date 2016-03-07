@@ -8,8 +8,7 @@ import javax.lang.model.element.VariableElement;
 import javax.tools.Diagnostic;
 import java.lang.reflect.Array;
 
-import static org.squiddev.configgen.processor.ConfigClass.CONFIG_NAME;
-import static org.squiddev.configgen.processor.ConfigClass.PROPERTY_NAME;
+import static org.squiddev.configgen.processor.ConfigClass.*;
 
 public class Field {
 	protected final VariableElement field;
@@ -30,16 +29,15 @@ public class Field {
 		String desc = env.getElementUtils().getDocComment(field);
 		description = desc == null ? null : desc.trim();
 
-
-		TypeHelpers.IType type = TypeHelpers.getType(field.asType());
+		TypeHelpers.IType type = TypeHelpers.getType(field.asType(), env.getTypeUtils());
 		String validate = TypeHelpers.validateType(type);
 		if (validate == null) {
 			defaultValue = type.extractValue(calculateDefault(), type.getType().getDefault());
-			if (!TypeHelpers.instanceOf(type.getTypeClass(), defaultValue)) {
+			if (!TypeHelpers.isType(defaultValue.getClass(), type)) {
 				env.getMessager().printMessage(
-					Diagnostic.Kind.ERROR,
-					"Unexpected default of type " + defaultValue.getClass() + ", wanted " + type.getTypeClass(),
-					field
+						Diagnostic.Kind.ERROR,
+						"Unexpected default of type " + defaultValue.getClass() + ", wanted " + type.getMirror(),
+						field
 				);
 			}
 
@@ -62,11 +60,11 @@ public class Field {
 
 		spec.addCode("$[$N = $N.get($S, $S, ", PROPERTY_NAME, CONFIG_NAME, category.name, name);
 
-		if (type.getTypeClass().isArray()) {
+		if (type.getType() == TypeHelpers.Type.ARRAY || type.getType() == TypeHelpers.Type.GENERIC_ARRAY) {
 			// A horrible method to get the default
-			String format = (((TypeHelpers.ArrayType) type).getComponentType().getType() == TypeHelpers.Type.STRING ? "$S" : "$L") + ", ";
+			String format = (type.getComponentType().getType() == TypeHelpers.Type.STRING ? "$S" : "$L") + ", ";
 
-			spec.addCode("new $T{", type.getTypeClass());
+			spec.addCode("new $T[]{", type.getComponentType().getMirror());
 			int length = Array.getLength(defaultValue);
 			for (int i = 0; i < length; i++) {
 				spec.addCode(format, Array.get(defaultValue, i));
@@ -89,7 +87,17 @@ public class Field {
 			spec.addStatement("$N.setMaxValue($L)", PROPERTY_NAME, range.max());
 		}
 
-		spec.addStatement("$T.$N = $N.$N()", category.type, name, PROPERTY_NAME, "get" + type.accessName());
+		if (type.getType() == TypeHelpers.Type.GENERIC_ARRAY) {
+			if (type.throughConstructor()) {
+				spec.addStatement("$T.$N = new $T($N.$N())", category.type, name, type.getMirror(), PROPERTY_NAME, "get" + type.accessName());
+			} else {
+				spec.beginControlFlow("for($T $N : $N.$N())", type.getComponentType().getMirror(), LOOP_NAME, PROPERTY_NAME, "get" + type.accessName());
+				spec.addStatement("$T.$N.add($N)", category.type, name, LOOP_NAME);
+				spec.endControlFlow();
+			}
+		} else {
+			spec.addStatement("$T.$N = $N.$N()", category.type, name, PROPERTY_NAME, "get" + type.accessName());
+		}
 	}
 
 	protected Object calculateDefault() {

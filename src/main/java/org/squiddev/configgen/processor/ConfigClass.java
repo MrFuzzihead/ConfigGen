@@ -23,6 +23,7 @@ public class ConfigClass {
 	public static final String CONFIG_FIELD = "configuration";
 	public static final String CONFIG_NAME = "config";
 	public static final String PROPERTY_NAME = "property";
+	public static final String LOOP_NAME = "var";
 
 	protected final TypeElement type;
 
