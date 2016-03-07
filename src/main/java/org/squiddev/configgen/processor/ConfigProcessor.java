@@ -14,7 +14,17 @@ import javax.tools.Diagnostic;
 import java.io.IOException;
 import java.util.Set;
 
-@SupportedAnnotationTypes("org.squiddev.configgen.Config")
+@SupportedAnnotationTypes({
+	"org.squiddev.configgen.Config",
+	"org.squiddev.configgen.DefaultBoolean",
+	"org.squiddev.configgen.DefaultDouble",
+	"org.squiddev.configgen.DefaultInt",
+	"org.squiddev.configgen.DefaultString",
+	"org.squiddev.configgen.Exclude",
+	"org.squiddev.configgen.OnSync",
+	"org.squiddev.configgen.Range",
+	"org.squiddev.configgen.RequiresRestart",
+})
 @SupportedSourceVersion(SourceVersion.RELEASE_6)
 public class ConfigProcessor extends AbstractProcessor {
 	@Override
@@ -26,7 +36,7 @@ public class ConfigProcessor extends AbstractProcessor {
 			}
 
 			try {
-				new ConfigClass((TypeElement) elem, processingEnv).generate(processingEnv);
+				ForgeBuilder.generate(new ConfigClass((TypeElement) elem, processingEnv), processingEnv);
 			} catch (IOException e) {
 				processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Error " + e.toString(), elem);
 			}

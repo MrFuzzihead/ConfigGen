@@ -136,9 +136,9 @@ public final class TypeHelpers {
 		@Override
 		public String toString() {
 			return "ArrayPropertyType{" +
-					"component=" + component +
-					", mirror=" + mirror +
-					'}';
+				"component=" + component +
+				", mirror=" + mirror +
+				'}';
 		}
 	}
 
@@ -294,9 +294,9 @@ public final class TypeHelpers {
 		@Override
 		public String toString() {
 			return "GenericArray{" +
-					"mirror=" + mirror +
-					", child=" + child +
-					'}';
+				"mirror=" + mirror +
+				", child=" + child +
+				'}';
 		}
 	}
 

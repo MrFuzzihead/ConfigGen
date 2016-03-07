@@ -1,6 +1,5 @@
 package org.squiddev.configgen.processor;
 
-import com.squareup.javapoet.MethodSpec;
 import org.squiddev.configgen.Exclude;
 import org.squiddev.configgen.RequiresRestart;
 
@@ -17,14 +16,14 @@ public class Category {
 
 	public final String name;
 	public final ConfigClass root;
-	protected Category parent;
+	public final Category parent;
 
-	protected List<Category> children = new ArrayList<Category>();
-	protected List<Field> fields = new ArrayList<Field>();
+	public final List<Category> children = new ArrayList<Category>();
+	public final List<Field> fields = new ArrayList<Field>();
 
-	protected String description;
-	protected boolean requiresMcRestart = false;
-	protected boolean requiresWorldRestart = false;
+	public final String description;
+	public final boolean requiresMcRestart;
+	public final boolean requiresWorldRestart;
 
 	public Category(TypeElement type, Category parent, ConfigClass root, ProcessingEnvironment env) {
 		this.type = type;
@@ -57,31 +56,13 @@ public class Category {
 		if (restart != null) {
 			requiresMcRestart = restart.mc();
 			requiresWorldRestart = restart.world();
+		} else {
+			requiresMcRestart = false;
+			requiresWorldRestart = false;
 		}
 	}
 
-	public void generate(MethodSpec.Builder spec) {
-		for (Category child : children) {
-			child.generate(spec);
-		}
-		for (Field field : fields) {
-			field.generate(spec);
-		}
 
-		if (description != null || root.languagePrefix != null || requiresMcRestart || requiresWorldRestart) {
-			spec.addCode("$[");
-			spec.addCode("$N.getCategory($S)", ConfigClass.CONFIG_NAME, name);
-
-			if (root.languagePrefix != null) spec.addCode("\n.setLanguageKey($S)", root.languagePrefix + name);
-			if (requiresWorldRestart) spec.addCode("\n.setRequiresWorldRestart($L)", true);
-			if (requiresMcRestart) spec.addCode("\n.setRequiresMcRestart($L)", true);
-
-			// This doesn't return a ConfigCategory so has to be last
-			if (description != null) spec.addCode("\n.setComment($S)", description.trim());
-
-			spec.addCode(";\n$]");
-		}
-	}
 }
 
 

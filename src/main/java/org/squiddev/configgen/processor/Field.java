@@ -1,30 +1,25 @@
 package org.squiddev.configgen.processor;
 
-import com.squareup.javapoet.MethodSpec;
 import org.squiddev.configgen.*;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
-import java.lang.reflect.Array;
-
-import static org.squiddev.configgen.processor.ConfigClass.CONFIG_NAME;
-import static org.squiddev.configgen.processor.ConfigClass.LOOP_NAME;
 
 public class Field {
 	protected final VariableElement field;
 
-	protected String name;
-	protected String description;
+	public final String name;
+	public final String description;
 
-	protected Object defaultValue;
-	protected TypeHelpers.IType type;
-	protected TypeMirror baseType;
-	protected boolean requiresMcRestart = false;
-	protected boolean requiresWorldRestart = false;
+	public final Object defaultValue;
+	public final TypeHelpers.IType type;
+	public final TypeMirror baseType;
+	public final boolean requiresMcRestart;
+	public final boolean requiresWorldRestart;
 
-	protected Category category;
+	public final Category category;
 
 	public Field(VariableElement field, Category category, ProcessingEnvironment env) {
 		this.field = field;
@@ -40,9 +35,9 @@ public class Field {
 			defaultValue = type.extractValue(calculateDefault(type.getDefault()), type.getDefault());
 			if (!TypeHelpers.isType(defaultValue.getClass(), type)) {
 				env.getMessager().printMessage(
-						Diagnostic.Kind.ERROR,
-						"Unexpected default of type " + defaultValue.getClass() + ", wanted " + type.getMirror(),
-						field
+					Diagnostic.Kind.ERROR,
+					"Unexpected default of type " + defaultValue.getClass() + ", wanted " + type.getMirror(),
+					field
 				);
 			}
 
@@ -53,86 +48,20 @@ public class Field {
 
 			defaultValue = null;
 			this.type = null;
+			baseType = null;
 		}
 
 		RequiresRestart restart = field.getAnnotation(RequiresRestart.class);
 		if (restart != null) {
 			requiresMcRestart = restart.mc();
 			requiresWorldRestart = restart.world();
+		} else {
+			requiresMcRestart = false;
+			requiresWorldRestart = false;
 		}
 	}
 
-	/**
-	 * Generate field access
-	 *
-	 * @param spec The writer to write to
-	 */
-	@SuppressWarnings("RedundantCast")
-	public void generate(MethodSpec.Builder spec) {
-		if (type == null) return;
-
-		spec.addCode("$[");
-		String propName = null;
-		if (type.getType() == TypeHelpers.Type.GENERIC_ARRAY) {
-			if (type.throughConstructor()) {
-				spec.addCode("$T.$N = new $T(", category.type, name, type.getMirror());
-			} else {
-				propName = category.type.getQualifiedName().toString().replace('.', '_') + "_" + name;
-				spec.addCode("$T $N = ", baseType, propName);
-			}
-		} else {
-			spec.addCode("$T.$N = ", category.type, name);
-		}
-
-		spec.addCode("$N.get($S, $S, ", CONFIG_NAME, category.name, name);
-
-		if (type.getType().isArray()) {
-			// A horrible method to get the default
-			String format = (type.getComponentType().getType() == TypeHelpers.Type.STRING ? "$S" : "$L") + ", ";
-
-			spec.addCode("new $T[]{", type.getComponentType().getMirror());
-			int length = Array.getLength(defaultValue);
-			for (int i = 0; i < length; i++) {
-				spec.addCode(format, Array.get(defaultValue, i));
-			}
-			spec.addCode("}");
-		} else {
-			spec.addCode(type.getType() == TypeHelpers.Type.STRING ? "$S" : "$L", defaultValue);
-		}
-		spec.addCode(", $S)\n", description);
-
-		if (requiresWorldRestart) spec.addCode(".setRequiresWorldRestart($L)\n", true);
-		if (requiresMcRestart) spec.addCode(".setRequiresMcRestart($L)\n", true);
-
-		Range range = field.getAnnotation(Range.class);
-		if (range != null) {
-			if (type.getType() == TypeHelpers.Type.INT) {
-				// We need the casts here to ensure that they are integers
-				spec.addCode(".setMinValue($L)\n", (int) range.min());
-				spec.addCode(".setMaxValue($L)\n", (int) range.max());
-			} else {
-				spec.addCode(".setMinValue($L)", range.min());
-				spec.addCode(".setMaxValue($L)\n", range.max());
-			}
-		}
-
-		if (category.root.languagePrefix != null) {
-			spec.addCode(".setLanguageKey($S)\n", category.root.languagePrefix + category.name + "." + name);
-		}
-
-		spec.addCode(".$N()", "get" + type.accessName());
-		if (type.getType() == TypeHelpers.Type.GENERIC_ARRAY && type.throughConstructor()) spec.addCode(")");
-		spec.addCode(";\n$]");
-
-		if (propName != null) {
-			spec.addStatement("$T.$N = new $T()", category.type, name, type.getMirror());
-			spec.beginControlFlow("for($T $N : $N)", type.getComponentType().getMirror(), LOOP_NAME, propName);
-			spec.addStatement("$T.$N.add($N)", category.type, name, LOOP_NAME);
-			spec.endControlFlow();
-		}
-	}
-
-	protected Object calculateDefault(Object def) {
+	public Object calculateDefault(Object def) {
 		DefaultBoolean dBoolean = field.getAnnotation(DefaultBoolean.class);
 		if (dBoolean != null) return dBoolean.value();
 
