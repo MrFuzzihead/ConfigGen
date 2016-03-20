@@ -37,8 +37,9 @@ public class PropertyBuilder {
 	}
 
 	private static void generate(Category category, MethodSpec.Builder spec, String root) {
+		root += "." + category.type.getSimpleName();
 		for (Category child : category.children) {
-			generate(child, spec, root + "." + child.type.getSimpleName());
+			generate(child, spec, root);
 		}
 		for (Field field : category.fields) {
 			generate(field, spec, root);

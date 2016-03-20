@@ -28,12 +28,12 @@ public final class OptionParser {
 
 	public static String[] getStringList(String name, String[] def) {
 		String value = System.getProperty(name);
-		return value == null ? def : value.split(",");
+		return value == null || value.isEmpty() ? def : value.split(",");
 	}
 
 	public static int[] getIntList(String name, int[] def) {
 		String value = System.getProperty(name);
-		if (value == null) {
+		if (value == null || value.isEmpty()) {
 			return def;
 		} else {
 			String[] values = value.split(",");
@@ -47,7 +47,7 @@ public final class OptionParser {
 
 	public static double[] getDoubleList(String name, double[] def) {
 		String value = System.getProperty(name);
-		if (value == null) {
+		if (value == null || value.isEmpty()) {
 			return def;
 		} else {
 			String[] values = value.split(",");
@@ -61,7 +61,7 @@ public final class OptionParser {
 
 	public static boolean[] getBooleanList(String name, boolean[] def) {
 		String value = System.getProperty(name);
-		if (value == null) {
+		if (value == null || value.isEmpty()) {
 			return def;
 		} else {
 			String[] values = value.split(",");
