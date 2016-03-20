@@ -28,13 +28,21 @@ public final class OptionParser {
 
 	public static String[] getStringList(String name, String[] def) {
 		String value = System.getProperty(name);
-		return value == null || value.isEmpty() ? def : value.split(",");
+		if (value == null) {
+			return def;
+		} else if (value.isEmpty()) {
+			return new String[0];
+		} else {
+			return value.split(",");
+		}
 	}
 
 	public static int[] getIntList(String name, int[] def) {
 		String value = System.getProperty(name);
-		if (value == null || value.isEmpty()) {
+		if (value == null) {
 			return def;
+		} else if (value.isEmpty()) {
+			return new int[0];
 		} else {
 			String[] values = value.split(",");
 			int[] outs = new int[values.length];
@@ -47,8 +55,10 @@ public final class OptionParser {
 
 	public static double[] getDoubleList(String name, double[] def) {
 		String value = System.getProperty(name);
-		if (value == null || value.isEmpty()) {
+		if (value == null) {
 			return def;
+		} else if (value.isEmpty()) {
+			return new double[0];
 		} else {
 			String[] values = value.split(",");
 			double[] outs = new double[values.length];
@@ -61,8 +71,10 @@ public final class OptionParser {
 
 	public static boolean[] getBooleanList(String name, boolean[] def) {
 		String value = System.getProperty(name);
-		if (value == null || value.isEmpty()) {
+		if (value == null) {
 			return def;
+		} else if (value.isEmpty()) {
+			return new boolean[0];
 		} else {
 			String[] values = value.split(",");
 			boolean[] outs = new boolean[values.length];
