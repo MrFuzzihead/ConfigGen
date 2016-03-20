@@ -18,4 +18,9 @@ public @interface Config {
 	 * If left blank, language keys will not be set
 	 */
 	String languagePrefix() default "";
+
+	/**
+	 * Prefix for properties
+	 */
+	String propertyPrefix() default "";
 }

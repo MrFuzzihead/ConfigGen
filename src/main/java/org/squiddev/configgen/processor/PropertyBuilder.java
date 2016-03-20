@@ -3,6 +3,7 @@ package org.squiddev.configgen.processor;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeSpec;
+import org.squiddev.configgen.OptionParser;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Modifier;
@@ -12,7 +13,7 @@ import java.lang.reflect.Array;
 /**
  * Builder for generating builders for default files
  */
-public class DefaultBuilder {
+public class PropertyBuilder {
 	private static final String LOOP_NAME = "var";
 
 	public static void generate(ConfigClass klass, ProcessingEnvironment env) throws IOException {
@@ -21,10 +22,10 @@ public class DefaultBuilder {
 			.returns(void.class);
 
 		for (Category category : klass.categories) {
-			generate(category, init);
+			generate(category, init, klass.propertyPrefix);
 		}
 
-		TypeSpec type = TypeSpec.classBuilder(klass.type.getSimpleName() + "DefaultLoader")
+		TypeSpec type = TypeSpec.classBuilder(klass.type.getSimpleName() + "PropertyLoader")
 			.addModifiers(Modifier.PUBLIC, Modifier.FINAL)
 			.addMethod(init.build())
 			.build();
@@ -35,12 +36,12 @@ public class DefaultBuilder {
 			.writeTo(env.getFiler());
 	}
 
-	private static void generate(Category category, MethodSpec.Builder spec) {
+	private static void generate(Category category, MethodSpec.Builder spec, String root) {
 		for (Category child : category.children) {
-			generate(child, spec);
+			generate(child, spec, root + "." + child.type.getSimpleName());
 		}
 		for (Field field : category.fields) {
-			generate(field, spec);
+			generate(field, spec, root);
 		}
 	}
 
@@ -49,7 +50,7 @@ public class DefaultBuilder {
 	 *
 	 * @param spec The writer to write to
 	 */
-	private static void generate(Field field, MethodSpec.Builder spec) {
+	private static void generate(Field field, MethodSpec.Builder spec, String root) {
 		if (field.type == null) return;
 
 		spec.addCode("$[");
@@ -65,6 +66,8 @@ public class DefaultBuilder {
 			spec.addCode("$T.$N = ", field.category.type, field.name);
 		}
 
+		spec.addCode("$T.$N($S, ", OptionParser.class, "get" + field.type.accessName(), root + "." + field.field.getSimpleName());
+
 		if (field.type.getType().isArray()) {
 			// A horrible method to get the default
 			String format = (field.type.getComponentType().getType() == TypeHelpers.Type.STRING ? "$S" : "$L") + ", ";
@@ -78,6 +81,8 @@ public class DefaultBuilder {
 		} else {
 			spec.addCode(field.type.getType() == TypeHelpers.Type.STRING ? "$S" : "$L", field.defaultValue);
 		}
+
+		spec.addCode(")");
 
 		if (field.type.getType() == TypeHelpers.Type.GENERIC_ARRAY && field.type.throughConstructor()) {
 			spec.addCode(")");

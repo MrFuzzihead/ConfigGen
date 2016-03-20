@@ -18,6 +18,7 @@ public class ConfigClass {
 	public final TypeElement type;
 
 	public final String languagePrefix;
+	public final String propertyPrefix;
 
 	public final List<Category> categories = new ArrayList<Category>();
 	public ExecutableElement sync;
@@ -26,7 +27,8 @@ public class ConfigClass {
 		this.type = type;
 
 		Config config = type.getAnnotation(Config.class);
-		languagePrefix = config.languagePrefix() == null || config.languagePrefix().isEmpty() ? null : config.languagePrefix();
+		languagePrefix = config.languagePrefix().isEmpty() ? null : config.languagePrefix();
+		propertyPrefix = config.languagePrefix().isEmpty() ? type.getSimpleName().toString() : config.propertyPrefix();
 
 		for (Element element : type.getEnclosedElements()) {
 			switch (element.getKind()) {
