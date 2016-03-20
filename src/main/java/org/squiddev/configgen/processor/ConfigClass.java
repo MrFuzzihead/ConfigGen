@@ -28,7 +28,7 @@ public class ConfigClass {
 
 		Config config = type.getAnnotation(Config.class);
 		languagePrefix = config.languagePrefix().isEmpty() ? null : config.languagePrefix();
-		propertyPrefix = config.languagePrefix().isEmpty() ? type.getSimpleName().toString() : config.propertyPrefix();
+		propertyPrefix = config.propertyPrefix().isEmpty() ? type.getSimpleName().toString() : config.propertyPrefix();
 
 		for (Element element : type.getEnclosedElements()) {
 			switch (element.getKind()) {
