@@ -61,7 +61,7 @@ public class Field {
 		}
 	}
 
-	public Object calculateDefault(Object def) {
+	private Object calculateDefault(Object def) {
 		DefaultBoolean dBoolean = field.getAnnotation(DefaultBoolean.class);
 		if (dBoolean != null) return dBoolean.value();
 

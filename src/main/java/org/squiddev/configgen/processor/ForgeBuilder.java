@@ -17,9 +17,9 @@ import java.lang.reflect.Array;
  * Builder for generating {@link Configuration} readers
  */
 public class ForgeBuilder {
-	public static final String CONFIG_FIELD = "configuration";
-	public static final String CONFIG_NAME = "config";
-	public static final String LOOP_NAME = "var";
+	private static final String CONFIG_FIELD = "configuration";
+	private static final String CONFIG_NAME = "config";
+	private static final String LOOP_NAME = "var";
 
 	public static void generate(ConfigClass klass, ProcessingEnvironment env) throws IOException {
 		FieldSpec configuration = FieldSpec
@@ -54,7 +54,7 @@ public class ForgeBuilder {
 			.addStatement("return configuration")
 			.build();
 
-		TypeSpec type = TypeSpec.classBuilder(klass.type.getSimpleName() + "Loader")
+		TypeSpec type = TypeSpec.classBuilder(klass.type.getSimpleName() + "ForgeLoader")
 			.addModifiers(Modifier.PUBLIC, Modifier.FINAL)
 			.addField(configuration)
 			.addMethod(sync.build())
@@ -68,7 +68,7 @@ public class ForgeBuilder {
 			.writeTo(env.getFiler());
 	}
 
-	public static void generate(Category category, MethodSpec.Builder spec) {
+	private static void generate(Category category, MethodSpec.Builder spec) {
 		for (Category child : category.children) {
 			generate(child, spec);
 		}
@@ -98,7 +98,7 @@ public class ForgeBuilder {
 	 *
 	 * @param spec The writer to write to
 	 */
-	public static void generate(Field field, MethodSpec.Builder spec) {
+	private static void generate(Field field, MethodSpec.Builder spec) {
 		if (field.type == null) return;
 
 		spec.addCode("$[");
