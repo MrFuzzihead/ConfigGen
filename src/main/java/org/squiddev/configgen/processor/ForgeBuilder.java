@@ -26,7 +26,7 @@ public class ForgeBuilder {
 			.builder(Configuration.class, CONFIG_FIELD, Modifier.PRIVATE, Modifier.STATIC)
 			.build();
 
-		MethodSpec.Builder sync = MethodSpec.methodBuilder("sync")
+		MethodSpec.Builder sync = MethodSpec.methodBuilder("doSync")
 			.addModifiers(Modifier.PUBLIC, Modifier.STATIC)
 			.returns(void.class)
 			.addStatement("$T $N = $N", Configuration.class, CONFIG_NAME, CONFIG_FIELD);
@@ -36,22 +36,35 @@ public class ForgeBuilder {
 		}
 
 		if (klass.sync != null) sync.addStatement("$T.$N()", klass.type, klass.sync.getSimpleName());
-		sync.addStatement("$N.save()", CONFIG_NAME);
 
+		MethodSpec syncSave = MethodSpec.methodBuilder("sync")
+			.addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+			.returns(void.class)
+			.addStatement("doSync()")
+			.addStatement("$N.save()", CONFIG_FIELD)
+			.build();
 
 		MethodSpec init = MethodSpec.methodBuilder("init")
 			.addModifiers(Modifier.PUBLIC, Modifier.STATIC)
 			.addParameter(File.class, "file")
 			.returns(void.class)
-			.addStatement("configuration = new Configuration(file)")
-			.addStatement("configuration.load()")
+			.addStatement("$N = new $T(file)", CONFIG_FIELD, Configuration.class)
+			.addStatement("$N.load()", CONFIG_FIELD)
+			.addStatement("sync()")
+			.build();
+
+		MethodSpec initC = MethodSpec.methodBuilder("init")
+			.addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+			.addParameter(Configuration.class, CONFIG_NAME)
+			.returns(void.class)
+			.addStatement("$N = $N", CONFIG_FIELD, CONFIG_NAME)
 			.addStatement("sync()")
 			.build();
 
 		MethodSpec getConfiguration = MethodSpec.methodBuilder("getConfiguration")
 			.addModifiers(Modifier.PUBLIC, Modifier.STATIC)
 			.returns(Configuration.class)
-			.addStatement("return configuration")
+			.addStatement("return $N", CONFIG_FIELD)
 			.build();
 
 		TypeSpec type = TypeSpec.classBuilder(klass.type.getSimpleName() + "ForgeLoader")
@@ -59,11 +72,14 @@ public class ForgeBuilder {
 			.addField(configuration)
 			.addMethod(sync.build())
 			.addMethod(init)
+			.addMethod(initC)
+			.addMethod(syncSave)
 			.addMethod(getConfiguration)
 			.build();
 
 		JavaFile
 			.builder(env.getElementUtils().getPackageOf(klass.type).getQualifiedName().toString(), type)
+			.indent("\t")
 			.build()
 			.writeTo(env.getFiler());
 	}
