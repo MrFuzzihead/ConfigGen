@@ -23,6 +23,7 @@ public class PropertyBuilder {
 		for (Category category : klass.categories) {
 			generate(category, init, klass.propertyPrefix);
 		}
+		if (klass.sync != null) init.addStatement("$T.$N()", klass.type, klass.sync.getSimpleName());
 
 		TypeSpec.Builder type = TypeSpec.classBuilder(klass.type.getSimpleName() + "PropertyLoader")
 			.addModifiers(Modifier.PUBLIC, Modifier.FINAL)
