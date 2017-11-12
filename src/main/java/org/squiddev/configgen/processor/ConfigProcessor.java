@@ -25,7 +25,7 @@ import java.util.Set;
 	"org.squiddev.configgen.Range",
 	"org.squiddev.configgen.RequiresRestart",
 })
-@SupportedSourceVersion(SourceVersion.RELEASE_6)
+@SupportedSourceVersion(SourceVersion.RELEASE_8)
 public class ConfigProcessor extends AbstractProcessor {
 	@Override
 	public boolean process(Set<? extends TypeElement> set, RoundEnvironment roundEnvironment) {
