@@ -140,6 +140,9 @@ public class MetadataBuilder {
 		intermediate.add("$<}");
 
 		TypeSpec.Builder type = TypeSpec.classBuilder(className)
+			.addAnnotation(AnnotationSpec.builder(SuppressWarnings.class)
+				.addMember("value", "{ $S, $S }", "unchecked", "rawtypes")
+				.build())
 			.addModifiers(Modifier.PUBLIC, Modifier.FINAL)
 			.addType(propertyTy)
 			.addType(categoryTy)
@@ -147,6 +150,7 @@ public class MetadataBuilder {
 				.addModifiers(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
 				.initializer(intermediate.build())
 				.build())
+			.addMethod(MethodSpec.constructorBuilder().addModifiers(Modifier.PRIVATE).build())
 			.addMethod(MethodSpec.methodBuilder("categories")
 				.addModifiers(Modifier.PUBLIC, Modifier.STATIC)
 				.returns(ParameterizedTypeName.get(ClassName.get(List.class), categoryName))
