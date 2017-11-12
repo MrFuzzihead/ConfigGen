@@ -66,14 +66,25 @@ public class PrimitiveConfig {
 
 	public final static class Arrays {
 		@DefaultString({"1", "2", "3"})
-		public static String[] foo;
+		public static String[] objDef;
 
-		public static String[] bar;
+		public static String[] obj;
 
 		@DefaultInt({1, 2, 3})
-		public static int[] primitiveFoo;
+		public static int[] primDef;
 
-		public static int[] primitiveBar;
+		public static int[] prim;
+
+		@DefaultInt({1, 2, 3})
+		public static HashSet<Integer> addDef;
+
+		public static HashSet<Integer> add;
+
+		@DefaultInt({1, 2, 3})
+		public static ThroughConstructor ctorDef;
+
+		@DefaultInt({1, 2, 3})
+		public static ThroughConstructor ctor;
 	}
 
 	@OnSync

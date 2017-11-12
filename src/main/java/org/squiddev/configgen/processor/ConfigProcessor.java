@@ -39,6 +39,7 @@ public class ConfigProcessor extends AbstractProcessor {
 				ConfigClass config = new ConfigClass((TypeElement) elem, processingEnv);
 				ForgeBuilder.generate(config, processingEnv);
 				PropertyBuilder.generate(config, processingEnv);
+				MetadataBuilder.generate(config, processingEnv);
 			} catch (IOException e) {
 				processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Error " + e.toString(), elem);
 			}
