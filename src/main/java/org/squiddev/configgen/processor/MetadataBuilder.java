@@ -6,9 +6,13 @@ import org.squiddev.configgen.processor.TypeHelpers.IType;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.Types;
 import java.io.IOException;
 import java.lang.reflect.Array;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 public class MetadataBuilder {
 	private final String className;
@@ -19,7 +23,9 @@ public class MetadataBuilder {
 
 	private final List<Category> categories;
 
-	private final Map<TypeMirror, TypeSpec> converters = new LinkedHashMap<TypeMirror, TypeSpec>();
+	private final List<TypeConverter> converters = new ArrayList<TypeConverter>();
+
+	private final Types types;
 
 	private MetadataBuilder(ConfigClass klass, ProcessingEnvironment env) {
 		this.categories = klass.categories;
@@ -29,6 +35,8 @@ public class MetadataBuilder {
 		this.propertyName = ClassName.get(packageName, className, "Property");
 		this.propertyVRep = TypeVariableName.get("R");
 		this.categoryName = ClassName.get(packageName, className, "Category");
+
+		this.types = env.getTypeUtils();
 	}
 
 	private JavaFile build() {
@@ -126,11 +134,10 @@ public class MetadataBuilder {
 		}
 		intermediate.add("$<}");
 
-		TypeSpec type = TypeSpec.classBuilder(className)
+		TypeSpec.Builder type = TypeSpec.classBuilder(className)
 			.addModifiers(Modifier.PUBLIC, Modifier.FINAL)
 			.addType(propertyTy)
 			.addType(categoryTy)
-			.addTypes(converters.values())
 			.addField(FieldSpec.builder(ArrayTypeName.of(categoryName), "categories")
 				.addModifiers(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
 				.initializer(intermediate.build())
@@ -139,11 +146,12 @@ public class MetadataBuilder {
 				.addModifiers(Modifier.PUBLIC, Modifier.STATIC)
 				.returns(ParameterizedTypeName.get(ClassName.get(List.class), categoryName))
 				.addStatement("return $T.unmodifiableList($T.asList($N))", Collections.class, Arrays.class, "categories")
-				.build())
-			.build();
+				.build());
+
+		for (TypeConverter converter : converters) type.addType(converter.spec);
 
 		return JavaFile
-			.builder(packageName, type)
+			.builder(packageName, type.build())
 			.build();
 	}
 
@@ -214,10 +222,14 @@ public class MetadataBuilder {
 
 	private TypeName getConverter(TypeMirror repType, IType fieldType) {
 		TypeMirror fieldMirror = fieldType.getMirror();
-		TypeSpec spec = converters.get(fieldMirror);
-		if (spec != null) return ClassName.get(packageName, className, spec.name);
+		for(TypeConverter converter : converters) {
+			if(types.isSameType(fieldMirror, converter.type)) {
+				return converter.name;
+			}
+		}
 
-		TypeSpec.Builder builder = TypeSpec.classBuilder("Property" + converters.size())
+		String name = "Property" + converters.size();
+		TypeSpec.Builder builder = TypeSpec.classBuilder(name)
 			.addModifiers(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
 			.superclass(ParameterizedTypeName.get(propertyName, TypeName.get(repType)))
 			.addMethod(MethodSpec.constructorBuilder()
@@ -248,8 +260,20 @@ public class MetadataBuilder {
 			convert.addCode("return ($T)$N", fieldMirror, "value");
 		}
 
-		spec = builder.addMethod(convert.build()).build();
-		converters.put(fieldMirror, spec);
-		return ClassName.get(packageName, className, spec.name);
+		ClassName fullName = ClassName.get(packageName, className, name);
+		converters.add(new TypeConverter(fieldMirror, builder.addMethod(convert.build()).build(), fullName));
+		return fullName;
+	}
+
+	private static class TypeConverter {
+		final TypeMirror type;
+		final TypeSpec spec;
+		final ClassName name;
+
+		private TypeConverter(TypeMirror type, TypeSpec spec, ClassName name) {
+			this.type = type;
+			this.spec = spec;
+			this.name = name;
+		}
 	}
 }
