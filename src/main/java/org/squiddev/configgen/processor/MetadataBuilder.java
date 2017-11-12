@@ -9,6 +9,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
 import java.io.IOException;
 import java.lang.reflect.Array;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -19,7 +20,6 @@ public class MetadataBuilder {
 	private final String packageName;
 	private final ClassName propertyName;
 	private final ClassName categoryName;
-	private final TypeVariableName propertyVRep;
 
 	private final List<Category> categories;
 
@@ -33,24 +33,26 @@ public class MetadataBuilder {
 		String packageName = this.packageName = env.getElementUtils().getPackageOf(klass.type).getQualifiedName().toString();
 
 		this.propertyName = ClassName.get(packageName, className, "Property");
-		this.propertyVRep = TypeVariableName.get("R");
 		this.categoryName = ClassName.get(packageName, className, "Category");
 
 		this.types = env.getTypeUtils();
 	}
 
 	private JavaFile build() {
+		TypeVariableName propertyVRep = TypeVariableName.get("R");
+		TypeName propertyCRep = ParameterizedTypeName.get(ClassName.get(Class.class), propertyVRep);
+
 		TypeSpec propertyTy = TypeSpec
 			.classBuilder("Property")
 			.addModifiers(Modifier.PUBLIC, Modifier.STATIC)
 			.addTypeVariable(propertyVRep)
-			.addField(FieldSpec.builder(String.class, "name", Modifier.PUBLIC, Modifier.FINAL).build())
-			.addField(FieldSpec.builder(String.class, "description", Modifier.PUBLIC, Modifier.FINAL).build())
-			.addField(FieldSpec.builder(ParameterizedTypeName.get(ClassName.get(Class.class), propertyVRep), "type", Modifier.PUBLIC, Modifier.FINAL).build())
-			.addField(FieldSpec.builder(propertyVRep, "defaultValue", Modifier.PUBLIC, Modifier.FINAL).build())
+			.addField(FieldSpec.builder(String.class, "name", Modifier.PRIVATE, Modifier.FINAL).build())
+			.addField(FieldSpec.builder(String.class, "description", Modifier.PRIVATE, Modifier.FINAL).build())
+			.addField(FieldSpec.builder(propertyCRep, "type", Modifier.PRIVATE, Modifier.FINAL).build())
+			.addField(FieldSpec.builder(propertyVRep, "defaultValue", Modifier.PRIVATE, Modifier.FINAL).build())
 			.addField(FieldSpec.builder(java.lang.reflect.Field.class, "field", Modifier.PRIVATE, Modifier.FINAL).build())
 			.addMethod(MethodSpec.constructorBuilder()
-				.addParameter(ParameterizedTypeName.get(ClassName.get(Class.class), propertyVRep), "type")
+				.addParameter(propertyCRep, "type")
 				.addParameter(String.class, "name")
 				.addParameter(String.class, "description")
 				.addParameter(Class.class, "category")
@@ -65,6 +67,8 @@ public class MetadataBuilder {
 				.addStatement("throw new $T($N)", RuntimeException.class, "e")
 				.endControlFlow()
 				.build())
+			.addMethod(getter(String.class, "name")).addMethod(getter(String.class, "description"))
+			.addMethod(getter(propertyVRep, "defaultValue")).addMethod(getter(propertyCRep, "type"))
 			.addMethod(MethodSpec.methodBuilder("convert")
 				.addModifiers(Modifier.PUBLIC)
 				.addParameter(propertyVRep, "value")
@@ -92,8 +96,8 @@ public class MetadataBuilder {
 		TypeSpec categoryTy = TypeSpec
 			.classBuilder("Category")
 			.addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-			.addField(FieldSpec.builder(String.class, "name", Modifier.PUBLIC, Modifier.FINAL).build())
-			.addField(FieldSpec.builder(String.class, "description", Modifier.PUBLIC, Modifier.FINAL).build())
+			.addField(FieldSpec.builder(String.class, "name", Modifier.PRIVATE, Modifier.FINAL).build())
+			.addField(FieldSpec.builder(String.class, "description", Modifier.PRIVATE, Modifier.FINAL).build())
 			.addField(FieldSpec.builder(ArrayTypeName.of(propertyName), "properties", Modifier.PRIVATE, Modifier.FINAL).build())
 			.addField(FieldSpec.builder(ArrayTypeName.of(categoryName), "children", Modifier.PRIVATE, Modifier.FINAL).build())
 			.addMethod(MethodSpec.constructorBuilder()
@@ -106,6 +110,7 @@ public class MetadataBuilder {
 				.addStatement("this.$N = $N", "properties", "properties")
 				.addStatement("this.$N = $N", "children", "children")
 				.build())
+			.addMethod(getter(String.class, "name")).addMethod(getter(String.class, "description"))
 			.addMethod(MethodSpec.methodBuilder("properties")
 				.addModifiers(Modifier.PUBLIC)
 				.returns(ParameterizedTypeName.get(ClassName.get(List.class), propertyName))
@@ -161,7 +166,7 @@ public class MetadataBuilder {
 	}
 
 	private void generate(Category category, CodeBlock.Builder block) {
-		block.add("new $T($S, $S, ", categoryName, category.name, category.description);
+		block.add("new $T($S, $S, ", categoryName, category.unqualifiedName, category.description);
 		if (category.fields.size() == 0) {
 			block.add("null");
 		} else {
@@ -222,8 +227,8 @@ public class MetadataBuilder {
 
 	private TypeName getConverter(TypeMirror repType, IType fieldType) {
 		TypeMirror fieldMirror = fieldType.getMirror();
-		for(TypeConverter converter : converters) {
-			if(types.isSameType(fieldMirror, converter.type)) {
+		for (TypeConverter converter : converters) {
+			if (types.isSameType(fieldMirror, converter.type)) {
 				return converter.name;
 			}
 		}
@@ -275,5 +280,21 @@ public class MetadataBuilder {
 			this.spec = spec;
 			this.name = name;
 		}
+	}
+
+	private static MethodSpec getter(TypeName type, String name) {
+		return MethodSpec.methodBuilder(name)
+			.addModifiers(Modifier.PUBLIC)
+			.returns(type)
+			.addStatement("return $N", name)
+			.build();
+	}
+
+	private static MethodSpec getter(Type type, String name) {
+		return MethodSpec.methodBuilder(name)
+			.addModifiers(Modifier.PUBLIC)
+			.returns(type)
+			.addStatement("return $N", name)
+			.build();
 	}
 }

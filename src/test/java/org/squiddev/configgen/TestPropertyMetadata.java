@@ -36,7 +36,7 @@ public class TestPropertyMetadata {
 	private <T> Property<T> getProperty(String root, String... path) {
 		Category current = null;
 		for (Category child : PrimitiveConfigMetadata.categories()) {
-			if (child.name.equals(root)) {
+			if (child.name().equals(root)) {
 				current = child;
 				break;
 			}
@@ -45,7 +45,7 @@ public class TestPropertyMetadata {
 		for (int i = 0; i < path.length - 1; i++) {
 			if (current == null) return null;
 			for (Category child : current.children()) {
-				if (child.name.equals(path[i])) {
+				if (child.name().equals(path[i])) {
 					current = child;
 					break;
 				}
@@ -54,7 +54,7 @@ public class TestPropertyMetadata {
 
 		if (current == null) return null;
 		for (Property child : current.properties()) {
-			if (child.name.equals(path[path.length - 1])) {
+			if (child.name().equals(path[path.length - 1])) {
 				return child;
 			}
 		}

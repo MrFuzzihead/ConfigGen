@@ -10,11 +10,13 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class Category {
 	public final TypeElement type;
 
 	public final String name;
+	public final String unqualifiedName;
 	public final ConfigClass root;
 	public final Category parent;
 
@@ -30,7 +32,8 @@ public class Category {
 		this.parent = parent;
 		this.root = root;
 
-		name = ((parent == null ? "" : parent.name + ".") + type.getSimpleName().toString()).toLowerCase();
+		unqualifiedName = type.getSimpleName().toString().toLowerCase(Locale.ENGLISH);
+		name = (parent == null ? "" : parent.name + ".") + unqualifiedName;
 		description = env.getElementUtils().getDocComment(type);
 
 		for (Element element : type.getEnclosedElements()) {
