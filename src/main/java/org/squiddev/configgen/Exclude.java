@@ -11,6 +11,5 @@ import java.lang.annotation.Target;
  * Final fields are automatically excluded
  */
 @Retention(RetentionPolicy.SOURCE)
-@Target({ElementType.FIELD, ElementType.TYPE})
-public @interface Exclude {
-}
+@Target({ ElementType.FIELD, ElementType.TYPE })
+public @interface Exclude {}
