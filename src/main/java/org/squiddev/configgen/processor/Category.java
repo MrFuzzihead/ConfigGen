@@ -1,71 +1,74 @@
 package org.squiddev.configgen.processor;
 
-import org.squiddev.configgen.Exclude;
-import org.squiddev.configgen.RequiresRestart;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
+
+import org.squiddev.configgen.Exclude;
+import org.squiddev.configgen.RequiresRestart;
 
 public class Category {
-	public final TypeElement type;
 
-	public final String name;
-	public final String unqualifiedName;
-	public final ConfigClass root;
-	public final Category parent;
+    public final TypeElement type;
 
-	public final List<Category> children = new ArrayList<Category>();
-	public final List<Field> fields = new ArrayList<Field>();
+    public final String name;
+    public final String unqualifiedName;
+    public final ConfigClass root;
+    public final Category parent;
 
-	public final String description;
-	public final boolean requiresMcRestart;
-	public final boolean requiresWorldRestart;
+    public final List<Category> children = new ArrayList<Category>();
+    public final List<Field> fields = new ArrayList<Field>();
 
-	public Category(TypeElement type, Category parent, ConfigClass root, ProcessingEnvironment env) {
-		this.type = type;
-		this.parent = parent;
-		this.root = root;
+    public final String description;
+    public final boolean requiresMcRestart;
+    public final boolean requiresWorldRestart;
 
-		unqualifiedName = type.getSimpleName().toString().toLowerCase(Locale.ENGLISH);
-		name = (parent == null ? "" : parent.name + ".") + unqualifiedName;
-		description = env.getElementUtils().getDocComment(type);
+    public Category(TypeElement type, Category parent, ConfigClass root, ProcessingEnvironment env) {
+        this.type = type;
+        this.parent = parent;
+        this.root = root;
 
-		for (Element element : type.getEnclosedElements()) {
-			switch (element.getKind()) {
-				case FIELD:
-					if (!element.getModifiers().contains(Modifier.FINAL) && element.getAnnotation(Exclude.class) == null) {
-						Utils.checkUsable(element, env);
-						fields.add(new Field((VariableElement) element, this, env));
-					}
-					break;
-				case CLASS:
-					if (element.getAnnotation(Exclude.class) == null) {
-						Utils.checkUsable(element, env);
-						children.add(new Category((TypeElement) element, this, root, env));
-					}
-					break;
-				default:
-					break;
-			}
-		}
+        unqualifiedName = type.getSimpleName()
+            .toString()
+            .toLowerCase(Locale.ENGLISH);
+        name = (parent == null ? "" : parent.name + ".") + unqualifiedName;
+        description = env.getElementUtils()
+            .getDocComment(type);
 
-		RequiresRestart restart = type.getAnnotation(RequiresRestart.class);
-		if (restart != null) {
-			requiresMcRestart = restart.mc();
-			requiresWorldRestart = restart.world();
-		} else {
-			requiresMcRestart = false;
-			requiresWorldRestart = false;
-		}
-	}
+        for (Element element : type.getEnclosedElements()) {
+            switch (element.getKind()) {
+                case FIELD:
+                    if (!element.getModifiers()
+                        .contains(Modifier.FINAL) && element.getAnnotation(Exclude.class) == null) {
+                        Utils.checkUsable(element, env);
+                        fields.add(new Field((VariableElement) element, this, env));
+                    }
+                    break;
+                case CLASS:
+                    if (element.getAnnotation(Exclude.class) == null) {
+                        Utils.checkUsable(element, env);
+                        children.add(new Category((TypeElement) element, this, root, env));
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
 
+        RequiresRestart restart = type.getAnnotation(RequiresRestart.class);
+        if (restart != null) {
+            requiresMcRestart = restart.mc();
+            requiresWorldRestart = restart.world();
+        } else {
+            requiresMcRestart = false;
+            requiresWorldRestart = false;
+        }
+    }
 
 }
-
-

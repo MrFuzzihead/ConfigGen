@@ -9,6 +9,5 @@ import java.lang.annotation.Target;
  * The method to call on sync
  */
 @Retention(RetentionPolicy.SOURCE)
-@Target({ElementType.METHOD})
-public @interface OnSync {
-}
+@Target({ ElementType.METHOD })
+public @interface OnSync {}
